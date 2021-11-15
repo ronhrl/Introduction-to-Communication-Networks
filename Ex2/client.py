@@ -6,22 +6,11 @@ import socket
 import sys
 import os
 
+
 ip = sys.argv[1]
 port = int(sys.argv[2])
 path = sys.argv[3]
-timer = sys.argv[4]
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((ip, port))
-
-if len(sys.argv) == 5:
-    client_id = sys.argv[5]
-else:
-    s.send(bytes("path", path))
-    client_id = s.recv(128)
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((ip, port))
+timer = int(sys.argv[4])
 
 
 class OnMyWatch:
@@ -37,7 +26,7 @@ class OnMyWatch:
         self.observer.start()
         try:
             while True:
-                time.sleep(5)
+                time.sleep(timer)
         except:
             self.observer.stop()
             print("Observer Stopped")
@@ -60,9 +49,22 @@ class Handler(FileSystemEventHandler):
             print("Watchdog received modified event - % s." % event.src_path)
 
 
-if __name__ == '__main__':
-    watch = OnMyWatch()
-    watch.run()
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((ip, port))
+
+if len(sys.argv) == 6:
+    client_id = sys.argv[5]
+else:
+    s.send((b"path"+path.encode()))
+    client_id = s.recv(128)
+
+watch = OnMyWatch()
+watch.run()
+
+
+# if __name__ == '__main__':
+#     watch = OnMyWatch()
+#     watch.run()
 
 # msg = b'Ron and Aviv Harel'
 # s.send(msg)
