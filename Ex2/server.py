@@ -3,13 +3,16 @@ import string
 import sys
 import os
 import random
+from socket import *
 import watchdog.events
 import watchdog.observers
 import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+CHUNKSIZE = 1_000_000
+
+server = socket(AF_INET, SOCK_STREAM)
 
 port = int(sys.argv[1])
 server.bind(('', port))
@@ -17,12 +20,50 @@ server.bind(('', port))
 server.listen(5)
 client_socket, client_address = server.accept()
 data = client_socket.recv(100)
-if data[0:3] == "path":
+if b"path" in data:
     #return to the client a random ID with digits, and lower\upper case letters.
     rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
-    client_socket.send(rand_id)
+    print(rand_id+'\n')
     # To add a link
     src_path = data[4:]
+    #########################################################
+    # Make a directory for the received files.
+    os.makedirs('server', exist_ok=True)
+
+    with client_socket, client_socket.makefile('rb') as clientfile:
+        while True:
+            raw = clientfile.readline()
+            if not raw: break  # no more files, server closed connection.
+
+            filename = raw.strip().decode()
+            length = int(clientfile.readline())
+            print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+
+            path = os.path.join('server', filename)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            # Read the data in chunks so it can handle large files.
+            with open(path, 'wb') as f:
+                while length:
+                    chunk = min(length, CHUNKSIZE)
+                    data = clientfile.read(chunk)
+                    if not data: break
+                    f.write(data)
+                    length -= len(data)
+                else:  # only runs if while doesn't break and length==0
+                    print('Complete')
+                    continue
+
+            # socket was closed early.
+            print('Incomplete')
+            break
+    client_socket.send(rand_id)
+
+
+
+        ##########################################################################################3
+
+
 
 class OnMyWatch:
     # Set the directory on watch
