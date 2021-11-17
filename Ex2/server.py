@@ -57,8 +57,8 @@ if b"path" in data:
             # socket was closed early.
             print('Incomplete')
             break
-    client_socket.send(rand_id)
 
+    client_socket.send(bytes(rand_id))
 
 
         ##########################################################################################3
@@ -101,8 +101,11 @@ class Handler(FileSystemEventHandler):
             # Event is modified, you can process it now
             print("Watchdog received modified event - % s." % event.src_path)
 
-watch = OnMyWatch()
-watch.run()
+while True:
+    watch = OnMyWatch()
+    watch.run()
+
+
 # while True:
 #     time.sleep(1)
     #I think we should put it outside the while loop- because we do it only in the first time.

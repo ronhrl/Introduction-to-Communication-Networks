@@ -66,7 +66,7 @@ else:
             for path, dirs, files in os.walk(src_path):
                 for file in files:
                     filename = os.path.join(path, file)
-                    relpath = os.path.relpath(filename, 'src_path')
+                    relpath = os.path.relpath(filename, src_path)
                     filesize = os.path.getsize(filename)
 
                     print(f'Sending {relpath}')
@@ -81,7 +81,7 @@ else:
                             if not data: break
                             s.sendall(data)
     #############################################################33
-    client_id = s.recv(128)
+client_id = s.recv(128)
 
 watch = OnMyWatch()
 watch.run()
