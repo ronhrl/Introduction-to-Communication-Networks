@@ -40,48 +40,74 @@ class Handler(FileSystemEventHandler):
 
     @staticmethod
     def on_any_event(event):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((ip, port))
+        s.sendall(client_id)
         if event.is_directory:
             return None
 
-        elif event.event_type == 'created':
-            # Event is created, you can process it now
-            print("Watchdog received created event - % s." % event.src_path)
-        elif event.event_type == 'modified':
-            # Event is modified, you can process it now
-            print("Watchdog received modified event - % s." % event.src_path)
+        #name = os.path.basename(event.src_path)
+        filename = event.src_path
+        print(filename)
+        relpath = os.path.basename(event.src_path)
+        print(relpath)
+        filesize = os.path.getsize(filename)
+        print(filesize)
+
+        print(f'Sending {relpath}')
+
+        with open(event.src_path, 'rb') as f:
+            s.sendall(relpath.encode() + b'\n')
+            s.sendall(str(filesize).encode() + b'\n')
+
+            # Send the file in chunks so large files can be handled.
+            while True:
+                data = f.read(CHUNKSIZE)
+                if not data: break
+                s.sendall(data)
+
+        # print("Watchdog received created event - % s." % event.src_path)
+
+        # elif event.event_type == 'modified':
+        #     # Event is modified, you can process it now
+        #     print("Watchdog received modified event - % s." % event.src_path)
 
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((ip, port))
-
+i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
 else:
     # send the file in the path to the sever.
-    s.send((b"path"+src_path.encode()))
-
+    s.send(b"path")
+    client_id = s.recv(128)
     ##################################################################33
-    while True:
-        with s:
-            for path, dirs, files in os.walk(src_path):
-                for file in files:
-                    filename = os.path.join(path, file)
-                    relpath = os.path.relpath(filename, src_path)
-                    filesize = os.path.getsize(filename)
 
-                    print(f'Sending {relpath}')
+    with s:
+        for path, dirs, files in os.walk(src_path):
+            for file in files:
+                filename = os.path.join(path, file)
+                print(filename)
+                relpath = os.path.relpath(filename, src_path)
+                print(relpath)
+                filesize = os.path.getsize(filename)
+                print(filesize)
+                print(f'Sending {relpath}')
 
-                    with open(filename, 'rb') as f:
-                        s.sendall(relpath.encode() + b'\n')
-                        s.sendall(str(filesize).encode() + b'\n')
+                with open(filename, 'rb') as f:
+                    print(i)
+                    i += 1
+                    s.sendall(relpath.encode() + b'\n')
+                    s.sendall(str(filesize).encode() + b'\n')
 
-                        # Send the file in chunks so large files can be handled.
-                        while True:
-                            data = f.read(CHUNKSIZE)
-                            if not data: break
-                            s.sendall(data)
+                    # Send the file in chunks so large files can be handled.
+                    while True:
+                        data = f.read(CHUNKSIZE)
+                        if not data: break
+                        s.sendall(data)
     #############################################################33
-client_id = s.recv(128)
+
 
 watch = OnMyWatch()
 watch.run()
