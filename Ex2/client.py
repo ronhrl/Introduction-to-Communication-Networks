@@ -83,7 +83,6 @@ else:
     s.send(b"path")
     client_id = s.recv(128)
     ##################################################################33
-
     with s:
         for path, dirs, files in os.walk(src_path):
             for file in files:
@@ -107,7 +106,6 @@ else:
                         if not data: break
                         s.sendall(data)
     #############################################################33
-
 
 watch = OnMyWatch()
 watch.run()
