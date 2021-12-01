@@ -75,6 +75,7 @@ class Handler(FileSystemEventHandler):
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((ip, port))
+print()
 i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
@@ -82,7 +83,6 @@ else:
     # send the file in the path to the sever.
     s.send(b"path")
     client_id = s.recv(128)
-    print(client_id)
     ##################################################################33
     with s:
         for path, dirs, files in os.walk(src_path):

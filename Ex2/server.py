@@ -15,6 +15,8 @@ port = int(sys.argv[1])
 id_dict = {}
 server = socket(AF_INET, SOCK_STREAM)
 server.bind(('', port))
+data_hash = {}
+data_list = []
 
 server.listen(5)
 while True:
@@ -32,6 +34,7 @@ while True:
         #########################################################
     else:
         rand_id = str(data)[2:-1]
+        print(rand_id)
     # Make a directory for the received files.
     os.makedirs(rand_id, exist_ok=True)
 
@@ -46,7 +49,11 @@ while True:
             filename = raw.strip().decode()
             length = int(clientfile.readline())
             print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-
+            data_list.append(filename)
+            data_hash[rand_id] = data_list
+            print("**************")
+            print(data_hash[rand_id])
+            print("**************")
             path = os.path.join(rand_id, filename)
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
