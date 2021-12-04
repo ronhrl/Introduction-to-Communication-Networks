@@ -17,29 +17,76 @@ server = socket(AF_INET, SOCK_STREAM)
 server.bind(('', port))
 data_hash = {}
 data_list = []
-
+new_client = 0
 server.listen(5)
 while True:
     client_socket, client_address = server.accept()
+    # print("##################")
+    # print(client_address)
+    # print(client_socket)
+    # print("##################")
+    # print("client")
     data = client_socket.recv(128)
+    # print("#################")
+    # print("data")
+    # print(data)
+    # print("#################")
 
     if b"path" in data:
-        #return to the client a random ID with digits, and lower\upper case letters.
+        # return to the client a random ID with digits, and lower\upper case letters.
         rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
         print(rand_id+'\n')
-        id_dict[rand_id] = 0  #false - didnt had change yet
+        id_dict[rand_id] = 0  # false - didnt had change yet
         # To add a link
-        #src_path = data[4:]
+        # src_path = data[4:]
         client_socket.send(str(rand_id).encode())
         #########################################################
     else:
         rand_id = str(data)[2:-1]
-        print(rand_id)
+        new_client = 1
+        # client_socket.sendall(data)
+        # data = client_socket.recv(100)
+        # print(data)
+        # print("rand")
+        # print(rand_id)
     # Make a directory for the received files.
+    
     os.makedirs(rand_id, exist_ok=True)
 
     with client_socket, client_socket.makefile('rb') as clientfile:
         while True:
+            # Case we need to handle known client from different dir so we need to send him first all the files
+            if new_client == 1:
+                src_path = os.getcwd() + "\\" + rand_id
+                print(59)
+                print(src_path)
+                for path, dirs, files in os.walk(src_path):
+                    print(path)
+                    print(dirs)
+                    print(files)
+                    for file in files:
+                        filename = os.path.join(path, file)
+                        print(filename)
+                        relpath = os.path.relpath(filename, rand_id)
+                        print(relpath)
+                        filesize = os.path.getsize(filename)
+                        print(filesize)
+                        print(f'Sending {relpath}')
+
+                        with open(filename, 'rb') as f:
+                            # print(i)
+                            # i += 1
+                            client_socket.sendall(relpath.encode() + b'\n')
+                            client_socket.sendall(str(filesize).encode() + b'\n')
+
+                            # Send the file in chunks so large files can be handled.
+                            while True:
+                                data = f.read(CHUNKSIZE)
+                                if not data:
+                                    client_socket.sendall("done".encode())
+                                    break
+                                client_socket.sendall(data)
+            #############################################################
             raw = clientfile.readline()
             if not raw:
                 client_socket.send(b'done')
@@ -71,10 +118,9 @@ while True:
 
             # socket was closed early.
             print('Incomplete')
-            #break
+            # break
 
-
-        ##########################################################################################3
+        ##########################################################################################
 
 
 

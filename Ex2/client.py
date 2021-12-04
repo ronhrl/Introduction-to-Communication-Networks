@@ -42,7 +42,8 @@ class Handler(FileSystemEventHandler):
     def on_any_event(event):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
-        s.sendall(client_id.encode())
+        print("45")
+        s.sendall(client_id)
         if event.is_directory:
             return None
 
@@ -59,12 +60,15 @@ class Handler(FileSystemEventHandler):
         with open(event.src_path, 'rb') as f:
             s.sendall(relpath.encode() + b'\n')
             s.sendall(str(filesize).encode() + b'\n')
-
+            print("63")
             # Send the file in chunks so large files can be handled.
             while True:
                 data = f.read(CHUNKSIZE)
-                if not data: break
+                print("67")
+                if not data:
+                    break
                 s.sendall(data)
+                print("70")
 
         # print("Watchdog received created event - % s." % event.src_path)
 
@@ -73,12 +77,17 @@ class Handler(FileSystemEventHandler):
         #     print("Watchdog received modified event - % s." % event.src_path)
 
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((ip, port))
+print("78")
 i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
+    # s.sendall("hello".encode())
+    # data1 = s.recv(100)
+    # print(data1)
 else:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+
     # send the file in the path to the sever.
     s.send(b"path")
     client_id = s.recv(128)
@@ -86,6 +95,12 @@ else:
     ##################################################################33
     with s:
         for path, dirs, files in os.walk(src_path):
+            print("#############################")
+            print(src_path)
+            print(path)
+            print(dirs)
+            print(files)
+            print("#############################")
             for file in files:
                 filename = os.path.join(path, file)
                 print(filename)
@@ -106,7 +121,7 @@ else:
                         data = f.read(CHUNKSIZE)
                         if not data: break
                         s.sendall(data)
-    #############################################################33
+    #############################################################
 
 watch = OnMyWatch()
 watch.run()
