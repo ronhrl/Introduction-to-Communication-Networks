@@ -85,7 +85,7 @@ if len(sys.argv) == 6:
         while True:
             raw = clientfile.readline()
             if not raw:
-                s.send(b'done')
+            # s.send(b'done')
                 s.close()
                 break  # no more files, server closed connection.
 
@@ -97,20 +97,30 @@ if len(sys.argv) == 6:
             # print("**************")
             # print(data_hash[rand_id])
             # print("**************")
-            # path = os.path.join(rand_id, filename)
+            dir_name = str(src_path).split("\\")[-1]
+            # print("#########")
+            # print(dir_name)
+            # print("#########")
+            path = os.path.join(src_path, filename)
             # os.makedirs(os.path.dirname(path), exist_ok=True)
 
             # Read the data in chunks so it can handle large files.
-            with open(src_path, 'wb') as f:
+            with open(path, 'wb') as f:
                 while length:
+                    print(110)
                     chunk = min(length, CHUNKSIZE)
                     data = clientfile.read(chunk)
-                    if not data: break
+                    # print("@@@@@@@@@@")
+                    # print(data)
+                    # print("@@@@@@@@@@")
+                    if not data:
+                        break
                     f.write(data)
                     length -= len(data)
-                # else:  # only runs if while doesn't break and length==0
-                #     print('Complete')
-                #     continue
+                else:  # only runs if while doesn't break and length==0
+                    print('Complete')
+                    # continue
+                    # break
     s.close()
 else:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

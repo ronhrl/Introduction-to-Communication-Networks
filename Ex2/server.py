@@ -87,38 +87,40 @@ while True:
                                     break
                                 client_socket.sendall(data)
             #############################################################
-            raw = clientfile.readline()
-            if not raw:
-                client_socket.send(b'done')
-                client_socket.close()
-                break  # no more files, server closed connection.
+            else:
+                raw = clientfile.readline()
+                if not raw:
+                    client_socket.send(b'done')
+                    client_socket.close()
+                    break  # no more files, server closed connection.
 
-            filename = raw.strip().decode()
-            length = int(clientfile.readline())
-            print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-            data_list.append(filename)
-            data_hash[rand_id] = data_list
-            print("**************")
-            print(data_hash[rand_id])
-            print("**************")
-            path = os.path.join(rand_id, filename)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+                filename = raw.strip().decode()
+                length = int(clientfile.readline())
+                print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                data_list.append(filename)
+                data_hash[rand_id] = data_list
+                print("**************")
+                print(data_hash[rand_id])
+                print("**************")
+                path = os.path.join(rand_id, filename)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                print("print")
+                print(path)
+                # Read the data in chunks so it can handle large files.
+                with open(path, 'wb') as f:
+                    while length:
+                        chunk = min(length, CHUNKSIZE)
+                        data = clientfile.read(chunk)
+                        if not data: break
+                        f.write(data)
+                        length -= len(data)
+                    else:  # only runs if while doesn't break and length==0
+                        print('Complete')
+                        continue
 
-            # Read the data in chunks so it can handle large files.
-            with open(path, 'wb') as f:
-                while length:
-                    chunk = min(length, CHUNKSIZE)
-                    data = clientfile.read(chunk)
-                    if not data: break
-                    f.write(data)
-                    length -= len(data)
-                else:  # only runs if while doesn't break and length==0
-                    print('Complete')
-                    continue
-
-            # socket was closed early.
-            print('Incomplete')
-            # break
+                # socket was closed early.
+                print('Incomplete')
+                # break
 
         ##########################################################################################
 
