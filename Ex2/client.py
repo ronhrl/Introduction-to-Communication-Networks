@@ -40,10 +40,18 @@ class Handler(FileSystemEventHandler):
 
     @staticmethod
     def on_any_event(event):
+        # print("event")
+        # When event is accord create new socket to upload the change.
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
-        print("45")
-        s.sendall(client_id)
+        # print(type(client_id))
+        if type(client_id) is bytes:
+            # print("bytes")
+            s.sendall(client_id)
+        else:
+            s.sendall(client_id.encode())
+        print(client_id)
+        # s.sendall(client_id.encode())
         if event.is_directory:
             return None
 
@@ -60,15 +68,13 @@ class Handler(FileSystemEventHandler):
         with open(event.src_path, 'rb') as f:
             s.sendall(relpath.encode() + b'\n')
             s.sendall(str(filesize).encode() + b'\n')
-            print("63")
+
             # Send the file in chunks so large files can be handled.
             while True:
                 data = f.read(CHUNKSIZE)
-                print("67")
                 if not data:
                     break
                 s.sendall(data)
-                print("70")
 
         # print("Watchdog received created event - % s." % event.src_path)
 
@@ -77,17 +83,66 @@ class Handler(FileSystemEventHandler):
         #     print("Watchdog received modified event - % s." % event.src_path)
 
 
-print("78")
+print()
 i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
+    print("################" + client_id)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
     s.sendall(("first" + client_id).encode())
-    s.sendall(client_id.encode())
-    # s.sendall("hello".encode())
-    # data1 = s.recv(100)
-    # print(data1)
+    # s.sendall(client_id.encode())
+    with s.makefile('rb') as clientfile:
+        while True:
+            raw = clientfile.readline()
+            # print("raw")
+            # print(raw)
+            # if "done" in raw:
+            #     break
+# #             if not raw:
+#             # s.send(b'done')
+#                 s.close()
+#                 break  # no more files, server closed connection.
+
+            filename = raw.strip().decode()
+            if "done" in filename:
+                break
+            if not raw:
+                continue
+            length = int(clientfile.readline())
+            print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+            # data_list.append(filename)
+            # data_hash[rand_id] = data_list
+            # print("**************")
+            # print(data_hash[rand_id])
+            # print("**************")
+            dir_name = str(src_path).split("\\")[-1]
+            # print("#########")
+            # print(dir_name)
+            # print("#########")
+            path = os.path.join(src_path, filename)
+            # os.makedirs(os.path.dirname(path), exist_ok=True)
+
+            # Read the data in chunks so it can handle large files.
+            with open(path, 'wb') as f:
+                while length:
+                    print(110)
+                    chunk = min(length, CHUNKSIZE)
+                    data = clientfile.read(chunk)
+                    # print("@@@@@@@@@@")
+                    # print(data)
+                    # print("@@@@@@@@@@")
+                    if not data:
+                        break
+                    f.write(data)
+                    length -= len(data)
+                else:  # only runs if while doesn't break and length==0
+                    print('Complete')
+                    continue
+                    # break
+
+    # print("Close")
+    # s.close()
 else:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
@@ -95,16 +150,13 @@ else:
     # send the file in the path to the sever.
     s.send(b"path")
     client_id = s.recv(128)
-    print(client_id)
     ##################################################################33
     with s:
         for path, dirs, files in os.walk(src_path):
-            print("#############################")
             print(src_path)
             print(path)
             print(dirs)
             print(files)
-            print("#############################")
             for file in files:
                 filename = os.path.join(path, file)
                 print(filename)
@@ -125,9 +177,13 @@ else:
                         data = f.read(CHUNKSIZE)
                         if not data: break
                         s.sendall(data)
-    #############################################################
+    #############################################################33
+
+print("close")
 
 watch = OnMyWatch()
+# When the client finish to upload all the files, close the socket.
+s.close()
 watch.run()
 
 
@@ -146,4 +202,4 @@ watch.run()
 #     data = s.recv(100)
 #     print("Server sent: ", data)
 
-s.close()
+

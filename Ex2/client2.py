@@ -40,9 +40,18 @@ class Handler(FileSystemEventHandler):
 
     @staticmethod
     def on_any_event(event):
+        # print("event")
+        # When event is accord create new socket to upload the change.
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
-        s.sendall(client_id.encode())
+        # print(type(client_id))
+        if type(client_id) is bytes:
+            # print("bytes")
+            s.sendall(client_id)
+        else:
+            s.sendall(client_id.encode())
+        print(client_id)
+        # s.sendall(client_id.encode())
         if event.is_directory:
             return None
 
@@ -132,8 +141,8 @@ if len(sys.argv) == 6:
                     continue
                     # break
 
-    print("Close")
-    s.close()
+    # print("Close")
+    # s.close()
 else:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
@@ -170,7 +179,11 @@ else:
                         s.sendall(data)
     #############################################################33
 
+print("close")
+
 watch = OnMyWatch()
+# When the client finish to upload all the files, close the socket.
+s.close()
 watch.run()
 
 
@@ -189,4 +202,4 @@ watch.run()
 #     data = s.recv(100)
 #     print("Server sent: ", data)
 
-s.close()
+

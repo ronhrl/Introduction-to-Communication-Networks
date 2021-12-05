@@ -88,7 +88,11 @@ while True:
                             filesize = os.path.getsize(filename)
                         # print(filesize)
                             print(f'Sending {relpath}')
-
+                            print("################")
+                            print(relpath)
+                            data_list.remove(relpath)
+                            print(data_list)
+                            print("################")
                             with open(filename, 'rb') as f:
                             # print(i)
                             # i += 1
@@ -112,6 +116,10 @@ while True:
                                     #     client_socket.sendall("done".encode())
                                     #     break
                                     client_socket.sendall(data)
+                                    # print(data.decode())
+
+                    data_hash[rand_id] = data_list
+                    print(data_hash[rand_id])
                     print("Done.")
                     client_socket.sendall("done".encode())
                     break
