@@ -81,6 +81,10 @@ print("78")
 i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+    s.sendall(("first" + client_id).encode())
+    s.sendall(client_id.encode())
     # s.sendall("hello".encode())
     # data1 = s.recv(100)
     # print(data1)

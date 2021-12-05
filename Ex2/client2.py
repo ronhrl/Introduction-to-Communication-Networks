@@ -78,18 +78,28 @@ print()
 i = 0
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
+    print("################" + client_id)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
-    s.sendall(client_id.encode())
+    s.sendall(("first" + client_id).encode())
+    # s.sendall(client_id.encode())
     with s.makefile('rb') as clientfile:
         while True:
             raw = clientfile.readline()
-            if not raw:
-            # s.send(b'done')
-                s.close()
-                break  # no more files, server closed connection.
+            # print("raw")
+            # print(raw)
+            # if "done" in raw:
+            #     break
+# #             if not raw:
+#             # s.send(b'done')
+#                 s.close()
+#                 break  # no more files, server closed connection.
 
             filename = raw.strip().decode()
+            if "done" in filename:
+                break
+            if not raw:
+                continue
             length = int(clientfile.readline())
             print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
             # data_list.append(filename)
@@ -119,8 +129,10 @@ if len(sys.argv) == 6:
                     length -= len(data)
                 else:  # only runs if while doesn't break and length==0
                     print('Complete')
-                    # continue
+                    continue
                     # break
+
+    print("Close")
     s.close()
 else:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
