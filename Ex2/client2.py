@@ -13,7 +13,7 @@ ip = sys.argv[1]
 port = int(sys.argv[2])
 src_path = sys.argv[3]
 timer = int(sys.argv[4])
-
+last_modified = "rontsoharel"
 
 class OnMyWatch:
     # Set the directory on watch
@@ -42,10 +42,12 @@ class OnMyWatch:
                             break  # no more files, server closed connection.
 
                         filename = raw.strip().decode()
+
                         length = int(clientfile.readline())
                         print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
                         path = os.path.join(src_path, filename)
-
+                        last_modified = filename
+                        print("last modified is " + last_modified)
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         print("print")
                         print(path)
@@ -94,7 +96,7 @@ class Handler(FileSystemEventHandler):
         elif event.event_type == 'moved':
             s.sendall(b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
 
-        elif event.event_type == 'modified' or event.event_type == 'created':
+        elif last_modified != os.path.basename(event.src_path):
             if type(client_id) is bytes:
                 # print("bytes")
                 s.sendall(client_id)

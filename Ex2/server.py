@@ -243,7 +243,7 @@ while True:
                         data_list.append(filename)
                         data_hash[rand_id] = data_list
                     print("**************")
-                    print(data_hash[rand_id])
+                    #print(data_hash[rand_id])
                     print("**************")
                     path = os.path.join(rand_id, filename)
 
