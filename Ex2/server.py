@@ -18,6 +18,7 @@ server.bind(('', port))
 data_hash = {}
 data_list = []
 new_client = 0
+delete_flag = 0
 server.listen(5)
 while True:
     client_socket, client_address = server.accept()
@@ -32,10 +33,23 @@ while True:
     # print(data)
     # print("#################")
 
+    if b'delete!' in data:
+        rand_id = str(data).split("delete!")[0][2:]
+        delete_flag = 1
+        remove_filename = os.path.basename(data.decode())
+        server_path = os.getcwd()
+        remove_path = server_path + '\\' + rand_id + '\\' + remove_filename
+        os.remove(remove_path[:-1])
+        # if os.path.isfile(remove_path):
+        #     os.remove(remove_path[:-1])
+        # elif os.path.isdir(remove_path):
+        #     os.rmdir(remove_path[:-1])
+        client_socket.close()
+        continue
     if b"path" in data:
         # return to the client a random ID with digits, and lower\upper case letters.
         rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
-        print(rand_id+'\n')
+        print(rand_id + '\n')
         id_dict[rand_id] = 0  # false - didnt had change yet
         # To add a link
         # src_path = data[4:]
@@ -56,112 +70,109 @@ while True:
         # print(data)
         # print("rand")
         # print(rand_id)
-    else:
+    elif b'delete!' not in data:
         print("else")
         rand_id = str(data)[2:-1]
         new_client = 0
         # Make a directory for the received files.
-    
     os.makedirs(rand_id, exist_ok=True)
+    if delete_flag == 0:
+        with client_socket, client_socket.makefile('rb') as clientfile:
+            while True:
+                # Case we need to handle known client from different dir so we need to send him first all the files
+                if new_client == 1:
+                    print(rand_id)
 
-    with client_socket, client_socket.makefile('rb') as clientfile:
-        while True:
-            # Case we need to handle known client from different dir so we need to send him first all the files
-            if new_client == 1:
-                print(rand_id)
+                    with client_socket:
 
-                with client_socket:
+                        src_path = os.getcwd() + "\\" + rand_id
+                        print(src_path)
+                        # print(59)
+                        # print(src_path)
+                        for path, dirs, files in os.walk(src_path):
+                            # print(path)
+                            # print(dirs)
+                            # print(files)
+                            for file in files:
+                                filename = os.path.join(path, file)
+                                # print(filename)
+                                relpath = os.path.relpath(filename, rand_id)
+                                # print(relpath)
+                                filesize = os.path.getsize(filename)
+                                # print(filesize)
+                                print(f'Sending {relpath}')
+                                print("################")
+                                print(relpath)
+                                data_list.remove(relpath)
+                                print(data_list)
+                                print("################")
+                                with open(filename, 'rb') as f:
+                                    # print(i)
+                                    # i += 1
+                                    client_socket.sendall(relpath.encode() + b'\n')
+                                    client_socket.sendall(str(filesize).encode() + b'\n')
 
-                    src_path = os.getcwd() + "\\" + rand_id
-                    print(src_path)
-                # print(59)
-                # print(src_path)
-                    for path, dirs, files in os.walk(src_path):
-                        # print(path)
-                        # print(dirs)
-                        # print(files)
-                        for file in files:
-                            filename = os.path.join(path, file)
-                        # print(filename)
-                            relpath = os.path.relpath(filename, rand_id)
-                        # print(relpath)
-                            filesize = os.path.getsize(filename)
-                        # print(filesize)
-                            print(f'Sending {relpath}')
-                            print("################")
-                            print(relpath)
-                            data_list.remove(relpath)
-                            print(data_list)
-                            print("################")
-                            with open(filename, 'rb') as f:
-                            # print(i)
-                            # i += 1
-                                client_socket.sendall(relpath.encode() + b'\n')
-                                client_socket.sendall(str(filesize).encode() + b'\n')
+                                    # Send the file in chunks so large files can be handled.
+                                    while True:
+                                        data = f.read(CHUNKSIZE)
+                                        if not data:
+                                            break
+                                        # data_dec = data.decode()
+                                        # data_list.remove(data_dec)
+                                        # print("len")
+                                        # print(len(data_list))
+                                        # if len(data_list) == 0:
+                                        #     client_socket.sendall("done".encode())
+                                        #     print(88)
+                                        #     break
+                                        # if not data:
+                                        #     client_socket.sendall("done".encode())
+                                        #     break
+                                        client_socket.sendall(data)
+                                        # print(data.decode())
 
-                                # Send the file in chunks so large files can be handled.
-                                while True:
-                                    data = f.read(CHUNKSIZE)
-                                    if not data:
-                                        break
-                                # data_dec = data.decode()
-                                # data_list.remove(data_dec)
-                                # print("len")
-                                    # print(len(data_list))
-                                    # if len(data_list) == 0:
-                                    #     client_socket.sendall("done".encode())
-                                    #     print(88)
-                                    #     break
-                                    # if not data:
-                                    #     client_socket.sendall("done".encode())
-                                    #     break
-                                    client_socket.sendall(data)
-                                    # print(data.decode())
+                        data_hash[rand_id] = data_list
+                        print(data_hash[rand_id])
+                        print("Done.")
+                        client_socket.sendall("done".encode())
+                        break
+                #############################################################
+                else:
+                    raw = clientfile.readline()
+                    if not raw:
+                        client_socket.send(b'done')
+                        client_socket.close()
+                        break  # no more files, server closed connection.
 
+                    filename = raw.strip().decode()
+                    length = int(clientfile.readline())
+                    print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                    data_list.append(filename)
                     data_hash[rand_id] = data_list
+                    print("**************")
                     print(data_hash[rand_id])
-                    print("Done.")
-                    client_socket.sendall("done".encode())
-                    break
-            #############################################################
-            else:
-                raw = clientfile.readline()
-                if not raw:
-                    client_socket.send(b'done')
-                    client_socket.close()
-                    break  # no more files, server closed connection.
+                    print("**************")
+                    path = os.path.join(rand_id, filename)
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    print("print")
+                    print(path)
+                    # Read the data in chunks so it can handle large files.
+                    with open(path, 'wb') as f:
+                        while length:
+                            chunk = min(length, CHUNKSIZE)
+                            data = clientfile.read(chunk)
+                            if not data: break
+                            f.write(data)
+                            length -= len(data)
+                        else:  # only runs if while doesn't break and length==0
+                            print('Complete')
+                            continue
 
-                filename = raw.strip().decode()
-                length = int(clientfile.readline())
-                print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-                data_list.append(filename)
-                data_hash[rand_id] = data_list
-                print("**************")
-                print(data_hash[rand_id])
-                print("**************")
-                path = os.path.join(rand_id, filename)
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                print("print")
-                print(path)
-                # Read the data in chunks so it can handle large files.
-                with open(path, 'wb') as f:
-                    while length:
-                        chunk = min(length, CHUNKSIZE)
-                        data = clientfile.read(chunk)
-                        if not data: break
-                        f.write(data)
-                        length -= len(data)
-                    else:  # only runs if while doesn't break and length==0
-                        print('Complete')
-                        continue
+                    # socket was closed early.
+                    print('Incomplete')
+                    # break
 
-                # socket was closed early.
-                print('Incomplete')
-                # break
-
-        ##########################################################################################
-
-
+            ##########################################################################################
 
 # class OnMyWatch:
 #     # Set the directory on watch
@@ -206,19 +217,19 @@ while True:
 
 # while True:
 #     time.sleep(1)
-    #I think we should put it outside the while loop- because we do it only in the first time.
-    # client_socket, client_address = server.accept()
-    # data = client_socket.recv(100)
-    # if data[0] == "path":
-    #     # To add a link
-    #     src_path = data[1]
-    #     event_handler = Handler()
-    #     observer = watchdog.observers.Observer()
-    #     observer.schedule(event_handler, path=src_path, recursive=True)
-    #     observer.start()
+# I think we should put it outside the while loop- because we do it only in the first time.
+# client_socket, client_address = server.accept()
+# data = client_socket.recv(100)
+# if data[0] == "path":
+#     # To add a link
+#     src_path = data[1]
+#     event_handler = Handler()
+#     observer = watchdog.observers.Observer()
+#     observer.schedule(event_handler, path=src_path, recursive=True)
+#     observer.start()
 
-    # rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
-    # client_socket.send(rand_id)
+# rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
+# client_socket.send(rand_id)
 # while True:
 #     client_socket, client_address = server.accept()
 #     print('Connection from: ', client_address)
