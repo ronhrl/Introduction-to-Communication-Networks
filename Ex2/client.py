@@ -55,8 +55,10 @@ class Handler(FileSystemEventHandler):
         if event.is_directory:
             return None
         if event.event_type == 'deleted':
-            print(b'delete!'+event.src_path.encode() + b'\n')
             s.sendall(b'delete!'+event.src_path.encode() + b'\n')
+        elif event.event_type == 'moved':
+            s.sendall(b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
+
         else:
             #name = os.path.basename(event.src_path)
             filename = event.src_path

@@ -33,6 +33,7 @@ while True:
     # print(data)
     # print("#################")
 
+
     if b'delete!' in data:
         rand_id = str(data).split("delete!")[0][2:]
         delete_flag = 1
@@ -40,6 +41,30 @@ while True:
         server_path = os.getcwd()
         remove_path = server_path + '\\' + rand_id + '\\' + remove_filename
         os.remove(remove_path[:-1])
+        # if os.path.isfile(remove_path):
+        #     os.remove(remove_path[:-1])
+        # elif os.path.isdir(remove_path):
+        #     os.rmdir(remove_path[:-1])
+        client_socket.close()
+        continue
+    if b'moved!' in data:
+        rand_id = str(data).split("moved!")[0][2:]
+        src_event = str(data).split("moved!")[1].split("dest")[0]
+        dest_event = str(data).split("dest")[1][:-3]
+        print("rand id: " + rand_id)
+        print("src event: " +src_event)
+        print("dest event: " +dest_event)
+        delete_flag = 1
+        src_filename = os.path.basename(src_event)
+        dest_filename = os.path.basename(dest_event)
+        print("src name: " + src_filename)
+        print("dest name: " + dest_filename)
+        server_path = os.getcwd()
+        src_path = server_path + '\\' + rand_id + '\\' + src_filename
+        dest_path = server_path + '\\' + rand_id + '\\' + dest_filename
+        print("src path: " + src_path)
+        print("dest path: " + dest_path)
+        os.rename(src_path, dest_path)
         # if os.path.isfile(remove_path):
         #     os.remove(remove_path[:-1])
         # elif os.path.isdir(remove_path):
@@ -79,15 +104,10 @@ while True:
         print("\n")
         print("randid = " + rand_id)
         new_client = 0
-        # Make a directory for the received files.
-    os.makedirs(rand_id, exist_ok=True)
-    if b'moved!' in data:
-        rand_id = str(data).split("moved!")[0][2:]
-        delete_flag = 0
-        data = data.split(b'moved!')[1]
-        print("\n")
-        print("Data = " + data)
+
     if delete_flag == 0:
+        # Make a directory for the received files.
+        os.makedirs(rand_id, exist_ok=True)
         with client_socket, client_socket.makefile('rb') as clientfile:
             while True:
                 # Case we need to handle known client from different dir so we need to send him first all the files
