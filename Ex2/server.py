@@ -17,29 +17,81 @@ server = socket(AF_INET, SOCK_STREAM)
 server.bind(('', port))
 data_hash = {}
 data_list = []
+delete_hash = {}
+delete_list = []
+rename_hash = {}
+rename_dict = {}
 new_client = 0
 delete_flag = 0
-server.listen(5)
+server.listen(1)
 while True:
     client_socket, client_address = server.accept()
+
     # print("##################")
     # print(client_address)
     # print(client_socket)
     # print("##################")
     # print("client")
     data = client_socket.recv(1024)
+    print("data = " + data.decode())
     # print("#################")
     # print("data")
     # print(data)
     # print("#################")
 
 
-    if b'delete!' in data:
+    if b'update!' in data:
+        rand_id = str(data).split("update!")[1][:-1]
+        # print("rand id is - " + rand_id)
+        server_path = os.getcwd()
+        update_path = server_path + '\\' + rand_id
+        delete_flag = 1
+        i = 0
+        # update only if the list is not empty.
+
+
+        while len(data_list) != 0:
+            print(data_list)
+            for path, dirs, files in os.walk(update_path):
+                    # print("the new path is : " + update_path)
+                    # print(path)
+                    # print(dirs)
+                    # print(files)
+                for file in files:
+                    filename = os.path.join(path, file)
+                        # print(filename)
+                    relpath = os.path.relpath(filename, src_path)
+                        # print(relpath)
+                    filesize = os.path.getsize(filename)
+                        # print(filesize)
+                        #print(f'Sending {relpath}')
+                        #print("file name - : " + file)
+                    if file in data_list:
+                        data_list.remove(file)
+                        print("new list:")
+                        print(data_list)
+                        with open(filename, 'rb') as f:
+                                # print(i)
+                            i += 1
+                            client_socket.sendall(relpath.encode() + b'\n')
+                            client_socket.sendall(str(filesize).encode() + b'\n')
+
+                                # Send the file in chunks so large files can be handled.
+                            while True:
+                                data = f.read(CHUNKSIZE)
+                                if not data: break
+                                client_socket.sendall(data)
+        client_socket.close()
+        continue
+
+    elif b'delete!' in data:
         rand_id = str(data).split("delete!")[0][2:]
         delete_flag = 1
         remove_filename = os.path.basename(data.decode())
         server_path = os.getcwd()
         remove_path = server_path + '\\' + rand_id + '\\' + remove_filename
+        delete_list.append(remove_filename)
+        delete_hash[rand_id] = delete_list
         os.remove(remove_path[:-1])
         # if os.path.isfile(remove_path):
         #     os.remove(remove_path[:-1])
@@ -47,7 +99,7 @@ while True:
         #     os.rmdir(remove_path[:-1])
         client_socket.close()
         continue
-    if b'moved!' in data:
+    elif b'moved!' in data:
         rand_id = str(data).split("moved!")[0][2:]
         src_event = str(data).split("moved!")[1].split("dest")[0]
         dest_event = str(data).split("dest")[1][:-3]
@@ -64,6 +116,8 @@ while True:
         dest_path = server_path + '\\' + rand_id + '\\' + dest_filename
         print("src path: " + src_path)
         print("dest path: " + dest_path)
+        rename_dict[src_filename] = dest_filename
+        rename_hash[rand_id] = rename_dict
         os.rename(src_path, dest_path)
         # if os.path.isfile(remove_path):
         #     os.remove(remove_path[:-1])
@@ -71,7 +125,7 @@ while True:
         #     os.rmdir(remove_path[:-1])
         client_socket.close()
         continue
-    if b"path" in data:
+    elif b"path" in data:
         delete_flag = 0
         # return to the client a random ID with digits, and lower\upper case letters.
         rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
@@ -97,12 +151,17 @@ while True:
         # print(data)
         # print("rand")
         # print(rand_id)
-    elif b'delete!' not in data:
+    elif b'ENDID' in data:
+        rand_id = str(data).split("ENDID")[0][2:]
+
+    else:
+
         delete_flag = 0
         print("else")
+        print(data.decode())
         rand_id = str(data)[2:-1]
         print("\n")
-        print("randid = " + rand_id)
+        #print("randid = " + rand_id)
         new_client = 0
 
     if delete_flag == 0:
@@ -176,16 +235,19 @@ while True:
                         break  # no more files, server closed connection.
 
                     filename = raw.strip().decode()
+                    if "ENDID" in filename:
+                        filename = filename.split("ENDID")[1]
                     length = int(clientfile.readline())
                     print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-                    data_list.append(filename)
-                    data_hash[rand_id] = data_list
+                    if filename not in data_list:
+                        data_list.append(filename)
+                        data_hash[rand_id] = data_list
                     print("**************")
                     print(data_hash[rand_id])
                     print("**************")
                     path = os.path.join(rand_id, filename)
 
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    #os.makedirs(os.path.dirname(path), exist_ok=True)
                     print("print")
                     print(path)
                     # Read the data in chunks so it can handle large files.

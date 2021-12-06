@@ -29,6 +29,41 @@ class OnMyWatch:
         try:
             while True:
                 time.sleep(timer)
+                # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                # s.connect((ip, port))
+                # s.sendall(b'update!'+ client_id.encode())
+                # with s, s.makefile('rb') as clientfile:
+                #     while True:
+                #         #the code that recive package.
+                #         raw = clientfile.readline()
+                #         if not raw:
+                #             #s.send(b'done')
+                #             s.close()
+                #             break  # no more files, server closed connection.
+                #
+                #         filename = raw.strip().decode()
+                #         length = int(clientfile.readline())
+                #         print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                #         path = os.path.join(src_path, filename)
+                #
+                #         os.makedirs(os.path.dirname(path), exist_ok=True)
+                #         print("print")
+                #         print(path)
+                #         # Read the data in chunks so it can handle large files.
+                #         with open(path, 'wb') as f:
+                #             while length:
+                #                 chunk = min(length, CHUNKSIZE)
+                #                 data = clientfile.read(chunk)
+                #                 if not data: break
+                #                 f.write(data)
+                #                 length -= len(data)
+                #             else:  # only runs if while doesn't break and length==0
+                #                 print('Complete')
+                #                 continue
+                #
+                #         # socket was closed early.
+                #         print('Incomplete')
+                #         # break
         except:
             self.observer.stop()
             print("Observer Stopped")

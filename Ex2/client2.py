@@ -29,6 +29,41 @@ class OnMyWatch:
         try:
             while True:
                 time.sleep(timer)
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((ip, port))
+                s.sendall(b'update!'+ client_id.encode())
+                with s, s.makefile('rb') as clientfile:
+                    while True:
+                        #the code that recive package.
+                        raw = clientfile.readline()
+                        if not raw:
+                            #s.send(b'done')
+                            s.close()
+                            break  # no more files, server closed connection.
+
+                        filename = raw.strip().decode()
+                        length = int(clientfile.readline())
+                        print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                        path = os.path.join(src_path, filename)
+
+                        os.makedirs(os.path.dirname(path), exist_ok=True)
+                        print("print")
+                        print(path)
+                        # Read the data in chunks so it can handle large files.
+                        with open(path, 'wb') as f:
+                            while length:
+                                chunk = min(length, CHUNKSIZE)
+                                data = clientfile.read(chunk)
+                                if not data: break
+                                f.write(data)
+                                length -= len(data)
+                            else:  # only runs if while doesn't break and length==0
+                                print('Complete')
+                                continue
+
+                        # socket was closed early.
+                        print('Incomplete')
+                        # break
         except:
             self.observer.stop()
             print("Observer Stopped")
@@ -45,12 +80,12 @@ class Handler(FileSystemEventHandler):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
         # print(type(client_id))
-        if type(client_id) is bytes:
-            # print("bytes")
-            s.sendall(client_id)
-        else:
-            s.sendall(client_id.encode())
-        print(client_id)
+        # if type(client_id) is bytes:
+        #     # print("bytes")
+        #     s.sendall(client_id)
+        # else:
+        #     s.sendall(client_id.encode())
+        # print(client_id)
         # s.sendall(client_id.encode())
         if event.is_directory:
             return None
@@ -59,7 +94,13 @@ class Handler(FileSystemEventHandler):
         elif event.event_type == 'moved':
             s.sendall(b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
 
-        else:
+        elif event.event_type == 'modified' or event.event_type == 'created':
+            if type(client_id) is bytes:
+                # print("bytes")
+                s.sendall(client_id)
+            else:
+                s.sendall(client_id.encode())
+            print(client_id)
             #name = os.path.basename(event.src_path)
             filename = event.src_path
             print(filename)
@@ -70,7 +111,7 @@ class Handler(FileSystemEventHandler):
             print(f'Sending {relpath}')
             assert os.path.isfile(event.src_path)
             with open(event.src_path, 'rb') as f:
-                s.sendall(relpath.encode() + b'\n')
+                s.sendall(b'ENDID'+ relpath.encode() + b'\n')
                 s.sendall(str(filesize).encode() + b'\n')
 
                 # Send the file in chunks so large files can be handled.
