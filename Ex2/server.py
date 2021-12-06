@@ -47,6 +47,7 @@ while True:
         client_socket.close()
         continue
     if b"path" in data:
+        delete_flag = 0
         # return to the client a random ID with digits, and lower\upper case letters.
         rand_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
         print(rand_id + '\n')
@@ -56,6 +57,7 @@ while True:
         client_socket.send(str(rand_id).encode())
         #########################################################
     elif b"first" in data:
+        delete_flag = 0
         # data2 = client_socket.recv(1024)
         print("data2")
         print(data)
@@ -71,11 +73,20 @@ while True:
         # print("rand")
         # print(rand_id)
     elif b'delete!' not in data:
+        delete_flag = 0
         print("else")
         rand_id = str(data)[2:-1]
+        print("\n")
+        print("randid = " + rand_id)
         new_client = 0
         # Make a directory for the received files.
     os.makedirs(rand_id, exist_ok=True)
+    if b'moved!' in data:
+        rand_id = str(data).split("moved!")[0][2:]
+        delete_flag = 0
+        data = data.split(b'moved!')[1]
+        print("\n")
+        print("Data = " + data)
     if delete_flag == 0:
         with client_socket, client_socket.makefile('rb') as clientfile:
             while True:
@@ -153,6 +164,7 @@ while True:
                     print(data_hash[rand_id])
                     print("**************")
                     path = os.path.join(rand_id, filename)
+
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     print("print")
                     print(path)

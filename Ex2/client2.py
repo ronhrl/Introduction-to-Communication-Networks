@@ -57,9 +57,31 @@ class Handler(FileSystemEventHandler):
         if event.event_type == 'deleted':
             print(b'delete!'+event.src_path.encode() + b'\n')
             s.sendall(b'delete!'+event.src_path.encode() + b'\n')
-        elif event.event_type == 'modified':
-            pass
+        elif event.event_type == 'moved':
+            s.sendall(b'delete!' + event.src_path.encode() + b'\n')
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((ip, port))
+            s.sendall(b'moved!'+ event.dest_path.encode() + b'\n')
+            filename = event.dest_path
+            print(filename)
+            relpath = os.path.basename(event.dest_path)
+            print(relpath)
+            filesize = os.path.getsize(filename)
+            print(filesize)
+            print(f'Sending {relpath}')
+            assert os.path.isfile(event.dest_path)
+            with open(event.dest_path, 'rb') as f:
+                s.sendall(relpath.encode() + b'\n')
+                s.sendall(str(filesize).encode() + b'\n')
+
+                # Send the file in chunks so large files can be handled.
+                while True:
+                    data = f.read(CHUNKSIZE)
+                    if not data:
+                        break
+                    s.sendall(data)
         else:
+
             #name = os.path.basename(event.src_path)
             filename = event.src_path
             print(filename)
