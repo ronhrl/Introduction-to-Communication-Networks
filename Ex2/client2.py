@@ -34,18 +34,24 @@ class OnMyWatch:
                 time.sleep(timer)
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect((ip, port))
-                s.sendall(pc_id.encode()+b'PCIDEND'+b'update!'+ client_id.encode())
+                if type(client_id) is bytes:
+                    s.sendall(pc_id.encode() + b'PCIDEND' + b'update!' + client_id)
+                else:
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'update!'+ client_id.encode())
                 update = s.recv(1024).decode()
                 global last_modified2
                 global last_modified
-                if "delete!" in update:
+                if "delete!" in update and bla not in update:
                     remove_filename = os.path.basename(update)
                     last_modified = remove_filename
                     print("remove file name= :" + remove_filename)
                     remove_path = bla + '\\' + remove_filename
                     print("remove path " + remove_path)
-                    os.remove(remove_path)
-                elif "moved!" in update:
+                    try:
+                        os.remove(remove_path)
+                    except:
+                        pass
+                elif "moved!" in update and bla not in update:
                     src_event = str(update).split("moved!")[1].split("dest")[0]
                     dest_event = str(update).split("dest")[1]
                     print("src event: " + src_event)
@@ -62,8 +68,10 @@ class OnMyWatch:
                     dest_path = bla + "\\" + dest_filename
                     print("src path: " + src_path)
                     print("dest path: " + dest_path)
-                    os.renames(src_path, dest_path)
-
+                    try:
+                        os.renames(src_path, dest_path)
+                    except:
+                        pass
                 elif "done" in update:
                     with s, s.makefile('rb') as clientfile:
                         while True:
@@ -74,14 +82,19 @@ class OnMyWatch:
                                 s.close()
                                 break  # no more files, server closed connection.
 
-                            filename = raw.strip().decode()
+                            filename = raw.strip()
+                            if type(filename) is bytes:
+                                filename = filename.decode()
+
                             last_modified = filename
                             length = int(clientfile.readline())
                             print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-                            path = os.path.join(bla, filename)
-
+                            try:
+                                path = os.path.join(bla, filename)
+                                os.makedirs(os.path.dirname(path), exist_ok=True)
+                            except:
+                                pass
                             print("last modified is " + last_modified)
-                            os.makedirs(os.path.dirname(path), exist_ok=True)
                             print("print")
                             print(path)
                             # Read the data in chunks so it can handle large files.
@@ -104,6 +117,8 @@ class OnMyWatch:
                 last_modified2 = None
         except:
             self.observer.stop()
+            e = sys.exc_info()[0]
+            print("<p>Error: %s</p>" % e)
             print("Observer Stopped")
 
         self.observer.join()
@@ -266,6 +281,7 @@ else:
     #############################################################33
 
 print("close")
+
 
 watch = OnMyWatch()
 # When the client finish to upload all the files, close the socket.

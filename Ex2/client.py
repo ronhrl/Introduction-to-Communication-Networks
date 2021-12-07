@@ -13,8 +13,10 @@ CHUNKSIZE = 1_000_000
 ip = sys.argv[1]
 port = int(sys.argv[2])
 src_path = sys.argv[3]
+bla = src_path
 timer = int(sys.argv[4])
 last_modified = None
+last_modified2 = None
 
 class OnMyWatch:
     # Set the directory on watch
@@ -30,48 +32,93 @@ class OnMyWatch:
         try:
             while True:
                 time.sleep(timer)
-                # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                # s.connect((ip, port))
-                # s.sendall(pc_id.encode()+b'PCIDEND'+b'update!'+ client_id.encode())
-                # with s, s.makefile('rb') as clientfile:
-                #     while True:
-                #         #the code that recive package.
-                #         raw = clientfile.readline()
-                #         if not raw:
-                #             #s.send(b'done')
-                #             s.close()
-                #             break  # no more files, server closed connection.
-                #
-                #         filename = raw.strip().decode()
-                #         global last_modified
-                #         last_modified = filename
-                #         length = int(clientfile.readline())
-                #         print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-                #         path = os.path.join(src_path, filename)
-                #
-                #         print("last modified is " + last_modified)
-                #         os.makedirs(os.path.dirname(path), exist_ok=True)
-                #         print("print")
-                #         print(path)
-                #         # Read the data in chunks so it can handle large files.
-                #         with open(path, 'wb') as f:
-                #             while length:
-                #                 chunk = min(length, CHUNKSIZE)
-                #                 data = clientfile.read(chunk)
-                #                 if not data:
-                #                     break
-                #                 f.write(data)
-                #                 length -= len(data)
-                #             else:  # only runs if while doesn't break and length==0
-                #                 print('Complete')
-                #                 continue
-                #
-                #         # socket was closed early.
-                #         print('Incomplete')
-                #         # break
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((ip, port))
+                if type(client_id) is bytes:
+                    s.sendall(pc_id.encode() + b'PCIDEND' + b'update!' + client_id)
+                else:
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'update!'+ client_id.encode())
+                update = s.recv(1024).decode()
+                global last_modified2
+                global last_modified
+                if "delete!" in update and bla not in update:
+                    remove_filename = os.path.basename(update)
+                    last_modified = remove_filename
+                    print("remove file name= :" + remove_filename)
+                    remove_path = bla + '\\' + remove_filename
+                    print("remove path " + remove_path)
+                    try:
+                        os.remove(remove_path)
+                    except:
+                        pass
+                elif "moved!" in update and bla not in update:
+                    src_event = str(update).split("moved!")[1].split("dest")[0]
+                    dest_event = str(update).split("dest")[1]
+                    print("src event: " + src_event)
+                    print("dest event: " + dest_event)
+                    src_filename = os.path.basename(src_event)
+                    dest_filename = os.path.basename(dest_event)
+                    last_modified = src_filename
+                    last_modified2 = dest_filename
+
+                    print("src name: " + src_filename)
+                    print("dest name: " + dest_filename)
+                    server_path = os.getcwd()
+                    src_path = bla + "\\" + src_filename
+                    dest_path = bla + "\\" + dest_filename
+                    print("src path: " + src_path)
+                    print("dest path: " + dest_path)
+                    try:
+                        os.renames(src_path, dest_path)
+                    except:
+                        pass
+                elif "done" in update:
+                    with s, s.makefile('rb') as clientfile:
+                        while True:
+                            #the code that recive package.
+                            raw = clientfile.readline()
+                            if not raw:
+                                #s.send(b'done')
+                                s.close()
+                                break  # no more files, server closed connection.
+
+                            filename = raw.strip()
+                            if type(filename) is bytes:
+                                filename = filename.decode()
+
+                            last_modified = filename
+                            length = int(clientfile.readline())
+                            print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                            try:
+                                path = os.path.join(bla, filename)
+                                os.makedirs(os.path.dirname(path), exist_ok=True)
+                            except:
+                                pass
+                            print("last modified is " + last_modified)
+                            print("print")
+                            print(path)
+                            # Read the data in chunks so it can handle large files.
+                            with open(path, 'wb') as f:
+                                while length:
+                                    chunk = min(length, CHUNKSIZE)
+                                    data = clientfile.read(chunk)
+                                    if not data:
+                                        break
+                                    f.write(data)
+                                    length -= len(data)
+                                else:  # only runs if while doesn't break and length==0
+                                    print('Complete')
+                                    continue
+
+                            # socket was closed early.
+                            print('Incomplete')
+                            # break
                 last_modified = None
+                last_modified2 = None
         except:
             self.observer.stop()
+            e = sys.exc_info()[0]
+            print("<p>Error: %s</p>" % e)
             print("Observer Stopped")
 
         self.observer.join()
@@ -95,41 +142,44 @@ class Handler(FileSystemEventHandler):
         # s.sendall(client_id.encode())
         if event.is_directory:
             return None
-        if event.event_type == 'deleted':
-            s.sendall(pc_id.encode()+b'PCIDEND'+b'delete!' + event.src_path.encode() + b'\n')
-        elif event.event_type == 'moved':
-            s.sendall(pc_id.encode()+b'PCIDEND'+b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
+        try:
+            if last_modified != os.path.basename(event.src_path) and last_modified2 != os.path.basename(event.src_path) :
+                if event.event_type == 'deleted':
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'delete!' + event.src_path.encode() + b'\n')
+                elif event.event_type == 'moved':
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
+                else:
+                    if last_modified != None:
+                        print(" last modified in sending:" + last_modified)
+                    if type(client_id) is bytes:
+                        # print("bytes")
+                        s.sendall(pc_id.encode()+b'PCIDEND'+client_id)
+                    else:
+                        s.sendall(pc_id.encode()+b'PCIDEND'+client_id.encode())
+                    print(client_id)
+                    #name = os.path.basename(event.src_path)
+                    filename = event.src_path
+                    print(filename)
+                    relpath = os.path.basename(event.src_path)
+                    print(relpath)
+                    filesize = os.path.getsize(filename)
+                    print(filesize)
+                    print(f'Sending {relpath}')
+                    assert os.path.isfile(event.src_path)
+                    with open(event.src_path, 'rb') as f:
+                        #s.sendall(b'ENDID'+ relpath.encode() + b'\n')
+                        s.sendall(relpath.encode() + b'\n')
+                        s.sendall(str(filesize).encode() + b'\n')
 
-        elif last_modified != os.path.basename(event.src_path):
-            if last_modified != None:
-                print(" last modified in sending:" + last_modified)
-            if type(client_id) is bytes:
-                # print("bytes")
-                s.sendall(pc_id.encode()+b'PCIDEND'+client_id)
-            else:
-                s.sendall(pc_id.encode()+b'PCIDEND'+client_id.encode())
-            print(client_id)
-            #name = os.path.basename(event.src_path)
-            filename = event.src_path
-            print(filename)
-            relpath = os.path.basename(event.src_path)
-            print(relpath)
-            filesize = os.path.getsize(filename)
-            print(filesize)
-            print(f'Sending {relpath}')
-            assert os.path.isfile(event.src_path)
-            with open(event.src_path, 'rb') as f:
-                #s.sendall(b'ENDID'+ relpath.encode() + b'\n')
-                s.sendall(relpath.encode() + b'\n')
-                s.sendall(str(filesize).encode() + b'\n')
-
-                # Send the file in chunks so large files can be handled.
-                while True:
-                    data = f.read(CHUNKSIZE)
-                    if not data:
-                        break
-                    s.sendall(data)
-        #s.close()
+                        # Send the file in chunks so large files can be handled.
+                        while True:
+                            data = f.read(CHUNKSIZE)
+                            if not data:
+                                break
+                            s.sendall(data)
+                #s.close()
+        except:
+            pass
 print()
 i = 0
 pc_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
@@ -231,6 +281,7 @@ else:
     #############################################################33
 
 print("close")
+
 
 watch = OnMyWatch()
 # When the client finish to upload all the files, close the socket.

@@ -31,6 +31,8 @@ while True:
         data = data.decode().split('PCIDEND')[1]
     except:
         pass
+    if type(data) is bytes:
+        data = data.decode()
     if 'update!' in data:
         #rand_id = str(data).split("update!")[1][:-1]
         # print("rand id is - " + rand_id)
@@ -47,6 +49,8 @@ while True:
             print("item = "+ item)
             if "delete!" in item or "moved!" in item:
                 client_socket.send(item.encode())
+                pc_hash[pc_id].remove(item)
+
         if len(pc_hash[pc_id]) != 0:
             client_socket.send(b'done')
             for path, dirs, files in os.walk(update_path):
@@ -57,7 +61,7 @@ while True:
                 for file in files:
                     filename = os.path.join(path, file)
                     # print(filename)
-                    relpath = os.path.relpath(filename, src_path)
+                    relpath = os.path.relpath(filename, update_path)
                     # print(relpath)
                     filesize = os.path.getsize(filename)
                     # print(filesize)
@@ -200,9 +204,10 @@ while True:
                                 print(f'Sending {relpath}')
                                 print("################")
                                 print(relpath)
-                                data_list.remove(relpath)
-                                pc_hash[pc_id] = data_list
-                                data_hash[rand_id] = pc_hash
+                                if relpath in data_list:
+                                    data_list.remove(relpath)
+                                    pc_hash[pc_id] = data_list
+                                    data_hash[rand_id] = pc_hash
                                 print(data_hash)
                                 print("################")
                                 with open(filename, 'rb') as f:
