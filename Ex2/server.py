@@ -27,12 +27,16 @@ while True:
     print('the frst data is : ' + data.decode())
     pc_id = data.decode().split('PCIDEND')[0]
     print(pc_id)
-    data = data.decode().split('PCIDEND')[1]
+    try:
+        data = data.decode().split('PCIDEND')[1]
+    except:
+        pass
     if 'update!' in data:
         #rand_id = str(data).split("update!")[1][:-1]
         # print("rand id is - " + rand_id)
         server_path = os.getcwd()
         update_path = server_path + '\\' + rand_id
+        print("UPDATE PATH = " +update_path)
         delete_flag = 1
         i = 0
         # update only if the list is not empty.
@@ -43,38 +47,37 @@ while True:
             print("item = "+ item)
             if "delete!" in item or "moved!" in item:
                 client_socket.send(item.encode())
-        # while len(temp_dict) != 0:
-        #     print(data_hash)
-        #     print("OK")
-        #     for path, dirs, files in os.walk(update_path):
-        #         # print("the new path is : " + update_path)
-        #         # print(path)
-        #         # print(dirs)
-        #         # print(files)
-        #         for file in files:
-        #             filename = os.path.join(path, file)
-        #             # print(filename)
-        #             relpath = os.path.relpath(filename, src_path)
-        #             # print(relpath)
-        #             filesize = os.path.getsize(filename)
-        #             # print(filesize)
-        #             # print(f'Sending {relpath}')
-        #             # print("file name - : " + file)
-        #             if file in data_hash[pc_id]:
-        #                 data_hash[pc_id].remove(file)
-        #                 print("new list:")
-        #                 print(data_hash)
-        #                 with open(filename, 'rb') as f:
-        #                     # print(i)
-        #                     i += 1
-        #                     client_socket.sendall(relpath.encode() + b'\n')
-        #                     client_socket.sendall(str(filesize).encode() + b'\n')
-        #
-        #                     # Send the file in chunks so large files can be handled.
-        #                     while True:
-        #                         data = f.read(CHUNKSIZE)
-        #                         if not data: break
-        #                         client_socket.sendall(data)
+        if len(pc_hash[pc_id]) != 0:
+            client_socket.send(b'done')
+            for path, dirs, files in os.walk(update_path):
+                # print("the new path is : " + update_path)
+                # print(path)
+                # print(dirs)
+                # print(files)
+                for file in files:
+                    filename = os.path.join(path, file)
+                    # print(filename)
+                    relpath = os.path.relpath(filename, src_path)
+                    # print(relpath)
+                    filesize = os.path.getsize(filename)
+                    # print(filesize)
+                    # print(f'Sending {relpath}')
+                    # print("file name - : " + file)
+                    if file in pc_hash[pc_id] and "delete!" not in pc_hash[pc_id] and "moved!" not in pc_hash[pc_id]:
+                        pc_hash[pc_id].remove(file)
+                        print("new list:")
+                        print(data_hash)
+                        with open(filename, 'rb') as f:
+                            # print(i)
+                            i += 1
+                            client_socket.sendall(relpath.encode() + b'\n')
+                            client_socket.sendall(str(filesize).encode() + b'\n')
+
+                            # Send the file in chunks so large files can be handled.
+                            while True:
+                                data = f.read(CHUNKSIZE)
+                                if not data: break
+                                client_socket.sendall(data)
         client_socket.close()
         continue
     elif 'delete!' in data:
@@ -89,7 +92,10 @@ while True:
         remove_path = server_path + '\\' + rand_id + '\\' + remove_filename
         print("remove path " + remove_path)
         print("rand id " + rand_id)
-        os.remove(remove_path[:-1])
+        try:
+            os.remove(remove_path[:-1])
+        except:
+            pass
         # for path, dirs, files in os.walk(remove_path, topdown=False):
         #     for dir in dirs:
         #         os.remove(dir)
@@ -119,7 +125,10 @@ while True:
         dest_path = server_path + '\\' + rand_id + '\\' + dest_filename
         print("src path: " + src_path)
         print("dest path: " + dest_path)
-        os.renames(src_path, dest_path[:-1])
+        try:
+            os.renames(src_path, dest_path[:-1])
+        except:
+            pass
         # if os.path.isfile(remove_path):
         #     os.remove(remove_path[:-1])
         # elif os.path.isdir(remove_path):
@@ -155,7 +164,7 @@ while True:
     elif 'delete!' not in data:
         delete_flag = 0
         print("else")
-        rand_id = str(data)
+        #rand_id = str(data)
         print("\n")
         print("randid = " + rand_id)
         new_client = 0

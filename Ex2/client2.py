@@ -64,43 +64,42 @@ class OnMyWatch:
                     print("dest path: " + dest_path)
                     os.renames(src_path, dest_path)
 
+                elif "done" in update:
+                    with s, s.makefile('rb') as clientfile:
+                        while True:
+                            #the code that recive package.
+                            raw = clientfile.readline()
+                            if not raw:
+                                #s.send(b'done')
+                                s.close()
+                                break  # no more files, server closed connection.
 
-                # with s, s.makefile('rb') as clientfile:
-                #     while True:
-                #         #the code that recive package.
-                #         raw = clientfile.readline()
-                #         if not raw:
-                #             #s.send(b'done')
-                #             s.close()
-                #             break  # no more files, server closed connection.
-                #
-                #         filename = raw.strip().decode()
-                #         global last_modified
-                #         last_modified = filename
-                #         length = int(clientfile.readline())
-                #         print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
-                #         path = os.path.join(src_path, filename)
-                #
-                #         print("last modified is " + last_modified)
-                #         os.makedirs(os.path.dirname(path), exist_ok=True)
-                #         print("print")
-                #         print(path)
-                #         # Read the data in chunks so it can handle large files.
-                #         with open(path, 'wb') as f:
-                #             while length:
-                #                 chunk = min(length, CHUNKSIZE)
-                #                 data = clientfile.read(chunk)
-                #                 if not data:
-                #                     break
-                #                 f.write(data)
-                #                 length -= len(data)
-                #             else:  # only runs if while doesn't break and length==0
-                #                 print('Complete')
-                #                 continue
-                #
-                #         # socket was closed early.
-                #         print('Incomplete')
-                #         # break
+                            filename = raw.strip().decode()
+                            last_modified = filename
+                            length = int(clientfile.readline())
+                            print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
+                            path = os.path.join(bla, filename)
+
+                            print("last modified is " + last_modified)
+                            os.makedirs(os.path.dirname(path), exist_ok=True)
+                            print("print")
+                            print(path)
+                            # Read the data in chunks so it can handle large files.
+                            with open(path, 'wb') as f:
+                                while length:
+                                    chunk = min(length, CHUNKSIZE)
+                                    data = clientfile.read(chunk)
+                                    if not data:
+                                        break
+                                    f.write(data)
+                                    length -= len(data)
+                                else:  # only runs if while doesn't break and length==0
+                                    print('Complete')
+                                    continue
+
+                            # socket was closed early.
+                            print('Incomplete')
+                            # break
                 last_modified = None
                 last_modified2 = None
         except:
@@ -128,41 +127,44 @@ class Handler(FileSystemEventHandler):
         # s.sendall(client_id.encode())
         if event.is_directory:
             return None
-        if last_modified != os.path.basename(event.src_path) and last_modified2 != os.path.basename(event.src_path) :
-            if event.event_type == 'deleted':
-                s.sendall(pc_id.encode()+b'PCIDEND'+b'delete!' + event.src_path.encode() + b'\n')
-            elif event.event_type == 'moved':
-                s.sendall(pc_id.encode()+b'PCIDEND'+b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
-            else:
-                if last_modified != None:
-                    print(" last modified in sending:" + last_modified)
-                if type(client_id) is bytes:
-                    # print("bytes")
-                    s.sendall(pc_id.encode()+b'PCIDEND'+client_id)
+        try:
+            if last_modified != os.path.basename(event.src_path) and last_modified2 != os.path.basename(event.src_path) :
+                if event.event_type == 'deleted':
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'delete!' + event.src_path.encode() + b'\n')
+                elif event.event_type == 'moved':
+                    s.sendall(pc_id.encode()+b'PCIDEND'+b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
                 else:
-                    s.sendall(pc_id.encode()+b'PCIDEND'+client_id.encode())
-                print(client_id)
-                #name = os.path.basename(event.src_path)
-                filename = event.src_path
-                print(filename)
-                relpath = os.path.basename(event.src_path)
-                print(relpath)
-                filesize = os.path.getsize(filename)
-                print(filesize)
-                print(f'Sending {relpath}')
-                assert os.path.isfile(event.src_path)
-                with open(event.src_path, 'rb') as f:
-                    #s.sendall(b'ENDID'+ relpath.encode() + b'\n')
-                    s.sendall(relpath.encode() + b'\n')
-                    s.sendall(str(filesize).encode() + b'\n')
+                    if last_modified != None:
+                        print(" last modified in sending:" + last_modified)
+                    if type(client_id) is bytes:
+                        # print("bytes")
+                        s.sendall(pc_id.encode()+b'PCIDEND'+client_id)
+                    else:
+                        s.sendall(pc_id.encode()+b'PCIDEND'+client_id.encode())
+                    print(client_id)
+                    #name = os.path.basename(event.src_path)
+                    filename = event.src_path
+                    print(filename)
+                    relpath = os.path.basename(event.src_path)
+                    print(relpath)
+                    filesize = os.path.getsize(filename)
+                    print(filesize)
+                    print(f'Sending {relpath}')
+                    assert os.path.isfile(event.src_path)
+                    with open(event.src_path, 'rb') as f:
+                        #s.sendall(b'ENDID'+ relpath.encode() + b'\n')
+                        s.sendall(relpath.encode() + b'\n')
+                        s.sendall(str(filesize).encode() + b'\n')
 
-                    # Send the file in chunks so large files can be handled.
-                    while True:
-                        data = f.read(CHUNKSIZE)
-                        if not data:
-                            break
-                        s.sendall(data)
-            #s.close()
+                        # Send the file in chunks so large files can be handled.
+                        while True:
+                            data = f.read(CHUNKSIZE)
+                            if not data:
+                                break
+                            s.sendall(data)
+                #s.close()
+        except:
+            pass
 print()
 i = 0
 pc_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
