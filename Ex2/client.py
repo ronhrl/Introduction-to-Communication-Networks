@@ -1,6 +1,7 @@
 # import time module, Observer, FileSystemEventHandler
+import string
 import time
-
+import random
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -13,7 +14,7 @@ ip = sys.argv[1]
 port = int(sys.argv[2])
 src_path = sys.argv[3]
 timer = int(sys.argv[4])
-
+last_modified = None
 
 class OnMyWatch:
     # Set the directory on watch
@@ -31,7 +32,7 @@ class OnMyWatch:
                 time.sleep(timer)
                 # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 # s.connect((ip, port))
-                # s.sendall(b'update!'+ client_id.encode())
+                # s.sendall(pc_id.encode()+b'PCIDEND'+b'update!'+ client_id.encode())
                 # with s, s.makefile('rb') as clientfile:
                 #     while True:
                 #         #the code that recive package.
@@ -42,10 +43,13 @@ class OnMyWatch:
                 #             break  # no more files, server closed connection.
                 #
                 #         filename = raw.strip().decode()
+                #         global last_modified
+                #         last_modified = filename
                 #         length = int(clientfile.readline())
                 #         print(f'Downloading {filename}...\n  Expecting {length:,} bytes...', end='', flush=True)
                 #         path = os.path.join(src_path, filename)
                 #
+                #         print("last modified is " + last_modified)
                 #         os.makedirs(os.path.dirname(path), exist_ok=True)
                 #         print("print")
                 #         print(path)
@@ -54,7 +58,8 @@ class OnMyWatch:
                 #             while length:
                 #                 chunk = min(length, CHUNKSIZE)
                 #                 data = clientfile.read(chunk)
-                #                 if not data: break
+                #                 if not data:
+                #                     break
                 #                 f.write(data)
                 #                 length -= len(data)
                 #             else:  # only runs if while doesn't break and length==0
@@ -64,6 +69,7 @@ class OnMyWatch:
                 #         # socket was closed early.
                 #         print('Incomplete')
                 #         # break
+                last_modified = None
         except:
             self.observer.stop()
             print("Observer Stopped")
@@ -80,21 +86,29 @@ class Handler(FileSystemEventHandler):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, port))
         # print(type(client_id))
-        if type(client_id) is bytes:
-            # print("bytes")
-            s.sendall(client_id)
-        else:
-            s.sendall(client_id.encode())
-        print(client_id)
+        # if type(client_id) is bytes:
+        #     # print("bytes")
+        #     s.sendall(client_id)
+        # else:
+        #     s.sendall(client_id.encode())
+        # print(client_id)
         # s.sendall(client_id.encode())
         if event.is_directory:
             return None
         if event.event_type == 'deleted':
-            s.sendall(b'delete!'+event.src_path.encode() + b'\n')
+            s.sendall(pc_id.encode()+b'PCIDEND'+b'delete!' + event.src_path.encode() + b'\n')
         elif event.event_type == 'moved':
-            s.sendall(b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
+            s.sendall(pc_id.encode()+b'PCIDEND'+b'moved!' + event.src_path.encode() + b'dest' + event.dest_path.encode() + b'\n')
 
-        else:
+        elif last_modified != os.path.basename(event.src_path):
+            if last_modified != None:
+                print(" last modified in sending:" + last_modified)
+            if type(client_id) is bytes:
+                # print("bytes")
+                s.sendall(pc_id.encode()+b'PCIDEND'+client_id)
+            else:
+                s.sendall(pc_id.encode()+b'PCIDEND'+client_id.encode())
+            print(client_id)
             #name = os.path.basename(event.src_path)
             filename = event.src_path
             print(filename)
@@ -105,6 +119,7 @@ class Handler(FileSystemEventHandler):
             print(f'Sending {relpath}')
             assert os.path.isfile(event.src_path)
             with open(event.src_path, 'rb') as f:
+                #s.sendall(b'ENDID'+ relpath.encode() + b'\n')
                 s.sendall(relpath.encode() + b'\n')
                 s.sendall(str(filesize).encode() + b'\n')
 
@@ -114,22 +129,16 @@ class Handler(FileSystemEventHandler):
                     if not data:
                         break
                     s.sendall(data)
-
-        # print("Watchdog received created event - % s." % event.src_path)
-
-        # elif event.event_type == 'modified':
-        #     # Event is modified, you can process it now
-        #     print("Watchdog received modified event - % s." % event.src_path)
-
-
+        #s.close()
 print()
 i = 0
+pc_id = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=128))
 if len(sys.argv) == 6:
     client_id = sys.argv[5]
     print("################" + client_id)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
-    s.sendall(("first" + client_id).encode())
+    s.sendall(pc_id.encode()+b'PCIDEND'+("first" + client_id).encode())
     # s.sendall(client_id.encode())
     with s.makefile('rb') as clientfile:
         while True:
@@ -187,7 +196,7 @@ else:
     s.connect((ip, port))
 
     # send the file in the path to the sever.
-    s.send(b"path")
+    s.send(pc_id.encode()+b'PCIDEND'+b"path")
     client_id = s.recv(128)
     ##################################################################33
     with s:
@@ -196,6 +205,9 @@ else:
             print(path)
             print(dirs)
             print(files)
+            # for moving the folders.
+            # for dir in dirs:
+            #     s.sendall(pc_id.encode()+b'PCIDEND'+b'folder!' + dir.encode())
             for file in files:
                 filename = os.path.join(path, file)
                 print(filename)
@@ -215,7 +227,7 @@ else:
                     while True:
                         data = f.read(CHUNKSIZE)
                         if not data: break
-                        s.sendall(data)
+                        s.sendall(pc_id.encode()+b'PCIDEND'+data)
     #############################################################33
 
 print("close")
